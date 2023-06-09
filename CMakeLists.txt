@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
+cmake_policy(SET CMP0077 NEW)
+
 project(virtualtfa)
 
 option(VIRTUALTFA_BUILD_STATIC "BUILD STATIC LIBRARIES" ON)
