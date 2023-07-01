@@ -8,7 +8,7 @@
 #include "virtualtfa.hpp"
 #include "file_util.hpp"
 
-#if defined(ANDROID)
+#if defined(ANDROID) || defined(__APPLE__)
 #include "sys/stat.h"
 #endif
 
