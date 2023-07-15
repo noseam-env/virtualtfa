@@ -5,10 +5,11 @@
 #include <bitset>
 #include <string>
 #include <sstream>
+#include <cstring>
 #include "virtualtfa.hpp"
-#include "file_util.hpp"
+#include "file_util.h"
 
-#if defined(ANDROID) || defined(__APPLE__)
+#if defined(__clang__)
 #include "sys/stat.h"
 #endif
 
@@ -74,81 +75,103 @@ std::size_t calc_bytes_to_write(std::size_t partSize, std::size_t partWrittenByt
     return std::min(partSize - partWrittenBytes, bufferSizeLeft);
 }
 
-VirtualTfaWriter::VirtualTfaWriter(VirtualTfaArchive *archive, IProgressListener *listener) : m_archive(archive), m_listener(listener) {}
+class VirtualTfaWriter::Impl {
+public:
+    Impl(VirtualTfaArchive *archive, IProgressListener *listener) : m_archive(archive), m_listener(listener) {}
+    ~Impl() = default;
+
+    std::size_t writeTo(char *buffer, std::size_t bufferSize) {
+        std::size_t partStartPos = 0;
+        std::size_t writtenBytes = 0;
+        for (const VirtualTfaEntry *entry: m_archive->entries) {
+            std::size_t bufferSizeLeft;
+            std::size_t partSize;
+            std::ptrdiff_t partWrittenBytes;
+
+            bufferSizeLeft = bufferSize - writtenBytes;
+            partSize = headerSize;
+            partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
+            if (partWrittenBytes != -1) {
+                std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
+                TfaHeader header = entry->header;
+                char *headerBufferPtr = reinterpret_cast<char *>(&header) + partWrittenBytes; // offset
+                std::copy(headerBufferPtr, headerBufferPtr + toWrite, buffer + writtenBytes);
+                writtenBytes += toWrite;
+                m_pointer += toWrite;
+                if (writtenBytes == bufferSize) break;
+            }
+            partStartPos += partSize;
+
+            bufferSizeLeft = bufferSize - writtenBytes;
+            partSize = entry->nameSize;
+            partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
+            if (partWrittenBytes != -1) {
+                std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
+                const char *name = entry->name.c_str();
+                const char *nameBufferPtr = name + partWrittenBytes; // offset
+                std::copy(nameBufferPtr, nameBufferPtr + toWrite - 1, buffer + writtenBytes);
+                buffer[writtenBytes + toWrite - 1] = '\0';
+                writtenBytes += toWrite;
+                m_pointer += toWrite;
+                if (writtenBytes == bufferSize) break;
+            }
+            partStartPos += partSize;
+
+            bufferSizeLeft = bufferSize - writtenBytes;
+            partSize = entry->fileSize;
+            partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
+            if (partWrittenBytes != -1) {
+                if (partWrittenBytes == 0 && m_listener != nullptr) {
+                    m_listener->fileStart(const_cast<char *>(entry->name.c_str()), entry->fileSize);
+                }
+                std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
+                //fseek(entry->file, partWrittenBytes, SEEK_SET); // this line breaks all, idk why.
+                std::size_t bytesRead = fread(buffer + writtenBytes, 1, toWrite, entry->file);
+                writtenBytes += toWrite;
+                m_pointer += toWrite;
+                if (m_listener != nullptr) {
+                    m_listener->fileProgress(const_cast<char *>(entry->name.c_str()), entry->fileSize, partWrittenBytes + toWrite);
+                    if (partWrittenBytes + toWrite == partSize) {
+                        m_listener->fileEnd(const_cast<char *>(entry->name.c_str()), entry->fileSize);
+                    }
+                }
+                if (writtenBytes == bufferSize) break;
+            }
+            partStartPos += partSize;
+        }
+        if (m_listener != nullptr) {
+            m_listener->totalProgress(m_pointer);
+        }
+        return writtenBytes;
+    }
+
+    std::size_t calcSize() {
+        std::size_t size = 0;
+        for (const VirtualTfaEntry *entry: m_archive->entries) {
+            size += headerSize;
+            size += entry->nameSize;
+            size += entry->fileSize;
+        }
+        return size;
+    }
+
+private:
+    VirtualTfaArchive *m_archive;
+    IProgressListener *m_listener;
+
+    std::size_t m_pointer = 0;
+};
+
+VirtualTfaWriter::VirtualTfaWriter(VirtualTfaArchive *archive, IProgressListener *listener) : pImpl(new Impl(archive, listener)) {}
+
+VirtualTfaWriter::~VirtualTfaWriter() = default;
 
 std::size_t VirtualTfaWriter::writeTo(char *buffer, std::size_t bufferSize) {
-    std::size_t partStartPos = 0;
-    std::size_t writtenBytes = 0;
-    for (const VirtualTfaEntry *entry: m_archive->entries) {
-        std::size_t bufferSizeLeft;
-        std::size_t partSize;
-        std::ptrdiff_t partWrittenBytes;
-
-        bufferSizeLeft = bufferSize - writtenBytes;
-        partSize = headerSize;
-        partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
-        if (partWrittenBytes != -1) {
-            std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
-            TfaHeader header = entry->header;
-            char *headerBufferPtr = reinterpret_cast<char *>(&header) + partWrittenBytes; // offset
-            std::copy(headerBufferPtr, headerBufferPtr + toWrite, buffer + writtenBytes);
-            writtenBytes += toWrite;
-            m_pointer += toWrite;
-            if (writtenBytes == bufferSize) break;
-        }
-        partStartPos += partSize;
-
-        bufferSizeLeft = bufferSize - writtenBytes;
-        partSize = entry->nameSize;
-        partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
-        if (partWrittenBytes != -1) {
-            std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
-            const char *name = entry->name.c_str();
-            const char *nameBufferPtr = name + partWrittenBytes; // offset
-            std::copy(nameBufferPtr, nameBufferPtr + toWrite - 1, buffer + writtenBytes);
-            buffer[writtenBytes + toWrite - 1] = '\0';
-            writtenBytes += toWrite;
-            m_pointer += toWrite;
-            if (writtenBytes == bufferSize) break;
-        }
-        partStartPos += partSize;
-
-        bufferSizeLeft = bufferSize - writtenBytes;
-        partSize = entry->fileSize;
-        partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
-        if (partWrittenBytes != -1) {
-            if (partWrittenBytes == 0 && m_listener != nullptr) {
-                m_listener->fileStart(const_cast<char *>(entry->name.c_str()), entry->fileSize);
-            }
-            std::size_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
-            //fseek(entry->file, partWrittenBytes, SEEK_SET); // this line breaks all, idk why.
-            std::size_t bytesRead = fread(buffer + writtenBytes, 1, toWrite, entry->file);
-            writtenBytes += toWrite;
-            m_pointer += toWrite;
-            if (m_listener != nullptr) {
-                m_listener->fileProgress(const_cast<char *>(entry->name.c_str()), entry->fileSize, partWrittenBytes + toWrite);
-                if (partWrittenBytes + toWrite == partSize) {
-                    m_listener->fileEnd(const_cast<char *>(entry->name.c_str()), entry->fileSize);
-                }
-            }
-            if (writtenBytes == bufferSize) break;
-        }
-        partStartPos += partSize;
-    }
-    if (m_listener != nullptr) {
-        m_listener->totalProgress(m_pointer);
-    }
-    return writtenBytes;
+    return pImpl->writeTo(buffer, bufferSize);
 }
 
 std::size_t VirtualTfaWriter::calcSize() {
-    std::size_t size = 0;
-    for (const VirtualTfaEntry *entry: m_archive->entries) {
-        size += headerSize;
-        size += entry->nameSize;
-        size += entry->fileSize;
-    }
-    return size;
+    return pImpl->calcSize();
 }
 
 bool isPathValid(const std::string& path) {
@@ -158,132 +181,166 @@ bool isPathValid(const std::string& path) {
     });
 }
 
-VirtualTfaReader::VirtualTfaReader(std::filesystem::path destDir, IProgressListener *listener) : m_destDir(std::move(destDir)), m_listener(listener), m_cur_headerBuf(new char[headerSize]), m_cur_remainHeaderSize(headerSize) {}
+class VirtualTfaReader::Impl {
+public:
+    Impl(std::filesystem::path destDir, IProgressListener *listener) : m_destDir(std::move(destDir))
+    , m_listener(listener)
+    , m_cur_headerBuf(new char[headerSize])
+    , m_cur_h_mode()
+    , m_cur_remainHeaderSize(headerSize) {}
+    ~Impl() = default;
+
+    std::size_t addReadData(char *buffer, std::size_t bufferSize) {
+        std::size_t readBytes = 0;
+        while (readBytes < bufferSize) {
+            std::size_t bufferSizeLeft;
+
+            bufferSizeLeft = bufferSize - readBytes;
+            if (m_cur_remainHeaderSize > 0) {
+                std::size_t offset = headerSize - m_cur_remainHeaderSize;
+
+                std::size_t toRead = std::min(m_cur_remainHeaderSize, bufferSizeLeft);
+
+                std::copy(buffer + readBytes, buffer + readBytes + toRead, m_cur_headerBuf + offset);
+                m_cur_remainHeaderSize -= toRead;
+                readBytes += toRead;
+
+                if (m_cur_remainHeaderSize == 0) {
+                    //std::cout << "Header buffered, reading ..." << std::endl;
+
+                    TfaHeader header = {};
+                    std::size_t deserializeOffset = 0;
+
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.magic), header.magic);
+                    deserializeOffset += sizeof(header.magic);
+                    header.version = m_cur_headerBuf[deserializeOffset];
+                    deserializeOffset++;
+                    header.typeflag = m_cur_headerBuf[deserializeOffset];
+                    deserializeOffset++;
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.unused), header.unused);
+                    deserializeOffset += sizeof(header.unused);
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.mode), header.mode);
+                    deserializeOffset += sizeof(header.mode);
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.ctime), header.ctime);
+                    deserializeOffset += sizeof(header.ctime);
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.mtime), header.mtime);
+                    deserializeOffset += sizeof(header.mtime);
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.namesize), header.namesize);
+                    deserializeOffset += sizeof(header.namesize);
+                    std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.filesize), header.filesize);
+
+                    std::bitset<9> bits(header.mode);
+                    m_cur_h_mode = static_cast<std::filesystem::perms>(bits.to_ulong());
+
+                    unsigned long ctime_value = std::strtoul(header.ctime, nullptr, 8);
+                    m_cur_h_ctime = static_cast<time_t>(ctime_value);
+
+                    unsigned long mtime_value = std::strtoul(header.mtime, nullptr, 8);
+                    m_cur_h_mtime = static_cast<time_t>(mtime_value);
+
+                    m_cur_remainNameSize = m_cur_h_namesize = std::stoull(header.namesize);
+                    m_cur_remainFileSize = m_cur_h_filesize = std::stoull(header.filesize);
+
+                    m_cur_name = new char[m_cur_h_namesize];
+
+                    //std::cout << "Header readed" << std::endl;
+                }
+                if (readBytes == bufferSize) break;
+            }
+
+            bufferSizeLeft = bufferSize - readBytes;
+            if (m_cur_remainNameSize > 0) {
+                std::size_t offset = m_cur_h_namesize - m_cur_remainNameSize;
+
+                std::size_t toRead = std::min(m_cur_remainNameSize, bufferSizeLeft);
+
+                std::copy(buffer + readBytes, buffer + readBytes + toRead, m_cur_name + offset);
+                m_cur_remainNameSize -= toRead;
+                readBytes += toRead;
+
+                if (m_cur_remainNameSize == 0) {
+                    if (!isPathValid(m_cur_name)) {
+                        break;
+                    }
+                    if (m_listener != nullptr) {
+                        m_listener->fileStart(m_cur_name, m_cur_h_filesize);
+                    }
+                    //std::cout << "Reading " << m_cur_name << " ..." << std::endl;
+                }
+                if (readBytes == bufferSize) break;
+            }
+
+            bufferSizeLeft = bufferSize - readBytes;
+            if (m_cur_remainFileSize > 0) {
+                if (m_cur_FILE != nullptr && m_cur_FILEname != nullptr && std::strcmp(m_cur_FILEname, m_cur_name) != 0) {
+                    fclose(m_cur_FILE);
+                    m_cur_FILE = nullptr;
+                }
+                if (m_cur_FILE == nullptr) {
+                    std::string filepath = (m_destDir / m_cur_name).string();
+                    m_cur_FILE = fopen(filepath.c_str(), "wb");
+                    m_cur_FILEname = m_cur_name;
+                }
+                //std::size_t offset = m_cur_h_filesize - m_cur_remainFileSize;
+                //fseek(m_cur_FILE, offset, SEEK_SET); // not required, but safe
+                std::size_t toRead = std::min(m_cur_remainFileSize, bufferSizeLeft);
+                fwrite(buffer + readBytes, 1, toRead, m_cur_FILE);
+                m_cur_remainFileSize -= toRead;
+                readBytes += toRead;
+                if (m_listener != nullptr) {
+                    m_listener->fileProgress(m_cur_name, m_cur_h_filesize, m_cur_h_filesize - m_cur_remainFileSize);
+                }
+                if (m_cur_remainFileSize == 0) {
+                    fclose(m_cur_FILE);
+                    m_cur_FILEname = nullptr;
+                    m_cur_FILE = nullptr;
+
+                    std::string filepath = (m_destDir / m_cur_name).string();
+                    setFileMetadata(filepath.c_str(), m_cur_h_mode, m_cur_h_ctime, m_cur_h_mtime);
+
+                    m_cur_remainHeaderSize = headerSize;
+
+                    if (m_listener != nullptr) {
+                        m_listener->fileEnd(m_cur_name, m_cur_h_filesize);
+                    }
+                }
+                if (readBytes == bufferSize) break;
+            }
+        }
+
+        m_totalRead += readBytes;
+        if (m_listener != nullptr) {
+            m_listener->totalProgress(m_totalRead);
+        }
+
+        return readBytes;
+    }
+
+private:
+    std::filesystem::path m_destDir;
+    IProgressListener *m_listener;
+
+    char *m_cur_headerBuf;
+    std::filesystem::perms m_cur_h_mode;
+    std::time_t m_cur_h_ctime = 0;
+    std::time_t m_cur_h_mtime = 0;
+    std::size_t m_cur_h_namesize = 0;
+    std::size_t m_cur_h_filesize = 0;
+    char *m_cur_name = nullptr;
+    char *m_cur_FILEname = nullptr;
+    FILE *m_cur_FILE = nullptr;
+    std::size_t m_cur_remainHeaderSize;
+    std::size_t m_cur_remainNameSize = 0;
+    std::size_t m_cur_remainFileSize = 0;
+    std::size_t m_totalRead = 0;
+};
+
+VirtualTfaReader::VirtualTfaReader(std::filesystem::path destDir, IProgressListener *listener) : pImpl(new Impl(std::move(destDir), listener)) {}
+
+VirtualTfaReader::~VirtualTfaReader() = default;
 
 std::size_t VirtualTfaReader::addReadData(char *buffer, std::size_t bufferSize) {
-    std::size_t readBytes = 0;
-    while (readBytes < bufferSize) {
-        std::size_t bufferSizeLeft;
-
-        bufferSizeLeft = bufferSize - readBytes;
-        if (m_cur_remainHeaderSize > 0) {
-            std::size_t offset = headerSize - m_cur_remainHeaderSize;
-
-            std::size_t toRead = std::min(m_cur_remainHeaderSize, bufferSizeLeft);
-
-            std::copy(buffer + readBytes, buffer + readBytes + toRead, m_cur_headerBuf + offset);
-            m_cur_remainHeaderSize -= toRead;
-            readBytes += toRead;
-
-            if (m_cur_remainHeaderSize == 0) {
-                //std::cout << "Header buffered, reading ..." << std::endl;
-
-                TfaHeader header = {};
-                std::size_t deserializeOffset = 0;
-
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.magic), header.magic);
-                deserializeOffset += sizeof(header.magic);
-                header.version = m_cur_headerBuf[deserializeOffset];
-                deserializeOffset++;
-                header.typeflag = m_cur_headerBuf[deserializeOffset];
-                deserializeOffset++;
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.unused), header.unused);
-                deserializeOffset += sizeof(header.unused);
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.mode), header.mode);
-                deserializeOffset += sizeof(header.mode);
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.ctime), header.ctime);
-                deserializeOffset += sizeof(header.ctime);
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.mtime), header.mtime);
-                deserializeOffset += sizeof(header.mtime);
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.namesize), header.namesize);
-                deserializeOffset += sizeof(header.namesize);
-                std::copy(m_cur_headerBuf + deserializeOffset, m_cur_headerBuf + deserializeOffset + sizeof(header.filesize), header.filesize);
-
-                std::bitset<9> bits(header.mode);
-                m_cur_h_mode = static_cast<std::filesystem::perms>(bits.to_ulong());
-
-                unsigned long ctime_value = std::strtoul(header.ctime, nullptr, 8);
-                m_cur_h_ctime = static_cast<time_t>(ctime_value);
-
-                unsigned long mtime_value = std::strtoul(header.mtime, nullptr, 8);
-                m_cur_h_mtime = static_cast<time_t>(mtime_value);
-
-                m_cur_remainNameSize = m_cur_h_namesize = std::stoull(header.namesize);
-                m_cur_remainFileSize = m_cur_h_filesize = std::stoull(header.filesize);
-
-                m_cur_name = new char[m_cur_h_namesize];
-
-                //std::cout << "Header readed" << std::endl;
-            }
-            if (readBytes == bufferSize) break;
-        }
-
-        bufferSizeLeft = bufferSize - readBytes;
-        if (m_cur_remainNameSize > 0) {
-            std::size_t offset = m_cur_h_namesize - m_cur_remainNameSize;
-
-            std::size_t toRead = std::min(m_cur_remainNameSize, bufferSizeLeft);
-
-            std::copy(buffer + readBytes, buffer + readBytes + toRead, m_cur_name + offset);
-            m_cur_remainNameSize -= toRead;
-            readBytes += toRead;
-
-            if (m_cur_remainNameSize == 0) {
-                if (!isPathValid(m_cur_name)) {
-                    break;
-                }
-                if (m_listener != nullptr) {
-                    m_listener->fileStart(m_cur_name, m_cur_h_filesize);
-                }
-                //std::cout << "Reading " << m_cur_name << " ..." << std::endl;
-            }
-            if (readBytes == bufferSize) break;
-        }
-
-        bufferSizeLeft = bufferSize - readBytes;
-        if (m_cur_remainFileSize > 0) {
-            if (m_cur_FILE != nullptr && m_cur_FILEname != nullptr && std::strcmp(m_cur_FILEname, m_cur_name) != 0) {
-                fclose(m_cur_FILE);
-                m_cur_FILE = nullptr;
-            }
-            if (m_cur_FILE == nullptr) {
-                std::string filepath = (m_destDir / m_cur_name).string();
-                m_cur_FILE = fopen(filepath.c_str(), "wb");
-                m_cur_FILEname = m_cur_name;
-            }
-            //std::size_t offset = m_cur_h_filesize - m_cur_remainFileSize;
-            //fseek(m_cur_FILE, offset, SEEK_SET); // not required, but safe
-            std::size_t toRead = std::min(m_cur_remainFileSize, bufferSizeLeft);
-            fwrite(buffer + readBytes, 1, toRead, m_cur_FILE);
-            m_cur_remainFileSize -= toRead;
-            readBytes += toRead;
-            if (m_listener != nullptr) {
-                m_listener->fileProgress(m_cur_name, m_cur_h_filesize, m_cur_h_filesize - m_cur_remainFileSize);
-            }
-            if (m_cur_remainFileSize == 0) {
-                fclose(m_cur_FILE);
-                m_cur_FILEname = nullptr;
-                m_cur_FILE = nullptr;
-
-                std::string filepath = (m_destDir / m_cur_name).string();
-                setFileMetadata(filepath.c_str(), m_cur_h_mode, m_cur_h_ctime, m_cur_h_mtime);
-
-                m_cur_remainHeaderSize = headerSize;
-
-                if (m_listener != nullptr) {
-                    m_listener->fileEnd(m_cur_name, m_cur_h_filesize);
-                }
-            }
-            if (readBytes == bufferSize) break;
-        }
-    }
-
-    m_totalRead += readBytes;
-    if (m_listener != nullptr) {
-        m_listener->totalProgress(m_totalRead);
-    }
-
-    return readBytes;
+    return pImpl->addReadData(buffer, bufferSize);
 }
 
 VirtualTfaArchive *virtual_tfa_archive_new() {

@@ -11,9 +11,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(VIRTUALTFA_SOURCES
         src/file_util.cpp
-        src/file_util.hpp
-        src/virtualtfa.cpp
-        )
+        src/file_util.h
+        src/virtualtfa.cpp)
 
 set(VIRTUALTFA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
