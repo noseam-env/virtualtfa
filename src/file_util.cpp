@@ -4,32 +4,33 @@
 
 #if defined(_WIN32)
 
-#include <windows.h>
-#include <fileapi.h>
-#include <handleapi.h>
+#include <Windows.h>
 
-FILETIME *convertTimeToFILETIME(const std::time_t &time) {
-    // Convert std::time_t to __int64
-    __int64 fileTimeValue = static_cast<__int64>(time) * 10000000 + 116444736000000000;
+FILETIME* convertTimeToFILETIME(const std::uint64_t& time) {
+    const std::uint64_t ticksPerSecond = 10000000ULL;
+    std::uint64_t fileTimeTicks = time * ticksPerSecond;
 
-    // Create a FILETIME structure
-    FILETIME *fileTime = new FILETIME;
+    const std::uint64_t epochOffset = 116444736000000000ULL;
+    std::uint64_t fileTimeValue = fileTimeTicks + epochOffset;
+
+    auto* fileTime = new FILETIME;
     fileTime->dwLowDateTime = static_cast<DWORD>(fileTimeValue);
     fileTime->dwHighDateTime = static_cast<DWORD>(fileTimeValue >> 32);
 
     return fileTime;
 }
 
-void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::time_t ctime, std::time_t mtime) {
-    HANDLE fileHandle = CreateFileA(filepath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
-                                    FILE_ATTRIBUTE_NORMAL, NULL);
+// not working, ill try NtSetInformationFile next time
+void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::uint64_t ctime, std::uint64_t mtime) {
+    HANDLE fileHandle = CreateFileA(filepath, GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL, nullptr);
     if (fileHandle == INVALID_HANDLE_VALUE) {
-        std::cout << "Cannot open file" << std::endl;
+        std::cerr << "setFileMetadata: Error opening file" << std::endl;
         return;
     }
 
     if (!SetFileTime(fileHandle, convertTimeToFILETIME(ctime), nullptr, convertTimeToFILETIME(mtime))) {
-        std::cout << "Cannot update file metadata" << std::endl;
+        std::cerr << "setFileMetadata: Error setting file time" << std::endl;
         CloseHandle(fileHandle);
         return;
     }
@@ -74,13 +75,13 @@ void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::tim
 
 #elif defined(__linux__)
 
-void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::time_t ctime, std::time_t mtime) {
+void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::uint64_t ctime, std::uint64_t mtime) {
     // TODO: implement
 }
 
 #elif defined(__APPLE__)
 
-void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::time_t ctime, std::time_t mtime) {
+void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::uint64_t ctime, std::uint64_t mtime) {
     // TODO: implement
 }
 

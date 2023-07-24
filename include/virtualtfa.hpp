@@ -11,10 +11,10 @@ class IProgressListener {
 public:
     virtual ~IProgressListener() = default;
 
-    virtual void totalProgress(std::size_t currentSize) = 0;
-    virtual void fileStart(char *fileName, std::size_t fileSize) = 0;
-    virtual void fileProgress(char *fileName, std::size_t fileSize, std::size_t currentSize) = 0;
-    virtual void fileEnd(char *fileName, std::size_t fileSize) = 0;
+    virtual void totalProgress(std::uint64_t currentSize) = 0;
+    virtual void fileStart(char *fileName, std::uint64_t fileSize) = 0;
+    virtual void fileProgress(char *fileName, std::uint64_t fileSize, std::uint64_t currentSize) = 0;
+    virtual void fileEnd(char *fileName, std::uint64_t fileSize) = 0;
 };
 
 class VirtualTfaWriter {
@@ -22,9 +22,8 @@ public:
     VirtualTfaWriter(VirtualTfaArchive *archive, IProgressListener *listener);
     ~VirtualTfaWriter();
 
-    std::size_t writeTo(char *buffer, std::size_t bufferSize);
-
-    std::size_t calcSize();
+    std::uint64_t writeTo(char *buffer, std::uint64_t bufferSize);
+    std::uint64_t calcSize();
 
 private:
     class Impl;
@@ -36,16 +35,28 @@ public:
     VirtualTfaReader(std::filesystem::path destDir, IProgressListener *listener);
     ~VirtualTfaReader();
 
-    std::size_t addReadData(char *buffer, std::size_t bufferSize);
+    std::uint64_t addReadData(char *buffer, std::uint64_t bufferSize);
 
 private:
     class Impl;
     std::unique_ptr<Impl> pImpl;
 };
 
+class VirtualFile {
+public:
+    virtual ~VirtualFile() = default;
+    [[nodiscard]] virtual std::string getRelativePath() const = 0;
+    [[nodiscard]] virtual std::uint64_t getSize() const = 0;
+    [[nodiscard]] virtual std::uint64_t getCreatedTime() const = 0; // UNIX time
+    [[nodiscard]] virtual std::uint64_t getModifiedTime() const = 0; // UNIX time
+    [[nodiscard]] virtual std::filesystem::file_status getStatus() const = 0;
+    virtual void seek(std::uint64_t pos) = 0;
+    virtual std::uint64_t read(char* buffer, std::uint64_t count) = 0;
+};
+
 VirtualTfaArchive *virtual_tfa_archive_new();
 
-VirtualTfaEntry *virtual_tfa_entry_new(const std::filesystem::path &filePath);
+VirtualTfaEntry *virtual_tfa_entry_new(VirtualFile &virtualFile);
 
 void virtual_tfa_archive_add(VirtualTfaArchive *archive, VirtualTfaEntry *entry);
 

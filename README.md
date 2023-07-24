@@ -10,7 +10,11 @@ int main(int argc, char *argv[]) {
     
     for (int i = 1; i < argc; ++i) {
         char* argument = argv[i];
-        VirtualTfaEntry *entry = virtual_tfa_entry_new(argument);
+        //
+        // Here you need to create object that
+        // implements VirtualFile class
+        //
+        VirtualTfaEntry *entry = virtual_tfa_entry_new(virtualFile);
         virtual_tfa_archive_add(archive, entry);
     }
     
@@ -43,25 +47,25 @@ int main(int argc, char *argv[]) {
 
 ### Header
 
-Size: `60 bytes`
+Size: `48 bytes`
 
-| Field    | Size | Absolute Pos | Description                                      |
-|----------|------|--------------|--------------------------------------------------|
-| magic    | 4    | 0-3          | magic field, value `tfa\0`                       |
-| version  | 1    | 3-4          | tfa version, currently `\0`                          |
-| typeflag | 1    | 4-5          | currently unused                                 |
-| unused   | 4    | 5-9          | reserved bytes                                   |
-| mode     | 8    | 9-17         | file permissions in bitset<9>                    |
-| ctime    | 12   | 17-29        | file creation time                               |
-| mtime    | 12   | 29-41        | file last modification time                      |
-| namesize | 6    | 41-47        | size of file name in bytes (including last `\0`) |
-| filesize | 12   | 47-59        | total file size in bytes                         |
+| Field    | Size | Absolute Pos | Description                                     |
+|----------|------|--------------|-------------------------------------------------|
+| magic    | 4    | 0-3          | magic field, value `tfa\0`                      |
+| version  | 1    | 4            | tfa version, currently `\0`                     |
+| typeflag | 1    | 5            | currently unused                                |
+| unused   | 4    | 6-9          | reserved bytes                                  |
+| mode     | 8    | 10-17        | file permissions in bitset<9>                   |
+| ctime    | 8    | 18-25        | file creation UNIX time (uint64_t)              |
+| mtime    | 8    | 26-33        | file last modification UNIX time (uint64_t)         |
+| namesize | 6    | 34-39        | size of file name in bytes (including last `\0`) |
+| filesize | 8    | 40-47        | total file size (uint64_t)              |
 
 ### Structure
 
 | Header   | File Name       | File Data       | Header   | File Name         |     |
 |----------|-----------------|-----------------|----------|-------------------|-----|
-| 60 bytes | header.namesize | header.filesize | 60 bytes | bytes from header | ... |
+| 48 bytes | header.namesize | header.filesize | 48 bytes | header.namesize | ... |
 
 
 ## License
