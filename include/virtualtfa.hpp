@@ -49,7 +49,7 @@ public:
     [[nodiscard]] virtual std::uint64_t getSize() const = 0;
     [[nodiscard]] virtual std::uint64_t getCreatedTime() const = 0; // UNIX time
     [[nodiscard]] virtual std::uint64_t getModifiedTime() const = 0; // UNIX time
-    [[nodiscard]] virtual std::filesystem::file_status getStatus() const = 0;
+    [[nodiscard]] virtual std::filesystem::perms getPermissions() const = 0;
     virtual void seek(std::uint64_t pos) = 0;
     virtual std::uint64_t read(char* buffer, std::uint64_t count) = 0;
 };

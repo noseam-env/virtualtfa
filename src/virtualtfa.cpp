@@ -344,11 +344,6 @@ VirtualTfaArchive *virtual_tfa_archive_new() {
 }
 
 VirtualTfaEntry *virtual_tfa_entry_new(VirtualFile &virtualFile) {
-    std::filesystem::file_status fileStatus = virtualFile.getStatus();
-    if (!exists(fileStatus)) {
-        throw std::runtime_error("File not exists");
-    }
-
     TfaHeader header{};
 
     // magic
@@ -360,7 +355,7 @@ VirtualTfaEntry *virtual_tfa_entry_new(VirtualFile &virtualFile) {
     header.version = 0;
 
     // typeflag
-    switch (fileStatus.type()) {
+    /*switch (fileStatus.type()) {
         case std::filesystem::file_type::regular:
             header.typeflag = 0;
             break;
@@ -369,16 +364,17 @@ VirtualTfaEntry *virtual_tfa_entry_new(VirtualFile &virtualFile) {
             break;
         default:
             throw std::runtime_error("Unsupported file type");
-    }
+    }*/
+    header.typeflag = 0;
 
     // mode
-    std::filesystem::perms permissions = fileStatus.permissions();
+    std::filesystem::perms permissions = virtualFile.getPermissions();
     std::string permissionsString = std::bitset<9>(static_cast<unsigned int>(permissions)).to_string();
     std::copy_n(permissionsString.c_str(), sizeof(header.mode) - 1, header.mode);
     //strncpy_s(header.mode, sizeof(header.mode), permissionsString.c_str(), sizeof(header.mode) - 1);
     header.mode[sizeof(header.mode) - 1] = '\0';
 
-    // createdTime & modifiedTime
+    // _createdTime & _modifiedTime
     std::uint64_t ctime = virtualFile.getCreatedTime();
     std::uint64_t mtime = virtualFile.getModifiedTime();
     std::memcpy(header.ctime, &ctime, sizeof(ctime));
