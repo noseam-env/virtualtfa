@@ -39,8 +39,8 @@ static std::uint64_t headerSize = sizeof(TfaHeader); // 48
 /*struct ParsedTfaHeader {
     char typeflag;
     std::uint16_t mode;
-    std::time_t ctime;
-    std::time_t mtime;
+    std::uint64_t ctime;
+    std::uint64_t mtime;
     std::uint64_t namesize;
     std::uint64_t filesize;
 };*/
@@ -119,7 +119,8 @@ public:
             partWrittenBytes = calc_part_written_bytes(m_pointer, partStartPos, partSize);
             if (partWrittenBytes != -1) {
                 if (partWrittenBytes == 0 && m_listener != nullptr) {
-                    m_listener->fileStart(const_cast<char *>(entry->name.c_str()), entry->fileSize);
+                    FileInfo fileInfo = {entry->name, entry->fileSize, 0, 0};
+                    m_listener->fileStart(fileInfo);
                 }
                 std::uint64_t toWrite = calc_bytes_to_write(partSize, partWrittenBytes, bufferSizeLeft);
                 //fseek(entry->file, partWrittenBytes, SEEK_SET); // this line breaks all, idk why.
@@ -127,9 +128,10 @@ public:
                 writtenBytes += toWrite;
                 m_pointer += toWrite;
                 if (m_listener != nullptr) {
-                    m_listener->fileProgress(const_cast<char *>(entry->name.c_str()), entry->fileSize, partWrittenBytes + toWrite);
+                    FileInfo fileInfo = {entry->name, entry->fileSize, 0, 0};
+                    m_listener->fileProgress(fileInfo, partWrittenBytes + toWrite);
                     if (partWrittenBytes + toWrite == partSize) {
-                        m_listener->fileEnd(const_cast<char *>(entry->name.c_str()), entry->fileSize);
+                        m_listener->fileEnd(fileInfo);
                     }
                 }
                 if (writtenBytes == bufferSize) break;
@@ -231,8 +233,8 @@ public:
                     std::bitset<9> bits(header.mode);
                     m_cur_h_mode = static_cast<std::filesystem::perms>(bits.to_ulong());
 
-                    std::uint64_t ctime = deserializeUint64(header.ctime);
-                    std::uint64_t mtime = deserializeUint64(header.mtime);
+                    m_cur_h_ctime = deserializeUint64(header.ctime);
+                    m_cur_h_mtime = deserializeUint64(header.mtime);
 
                     m_cur_remainNameSize = m_cur_h_namesize = std::stoull(header.namesize);
                     m_cur_remainFileSize = m_cur_h_filesize = deserializeUint64(header.filesize);
@@ -259,7 +261,8 @@ public:
                         break;
                     }
                     if (m_listener != nullptr) {
-                        m_listener->fileStart(m_cur_name, m_cur_h_filesize);
+                        FileInfo fileInfo = {std::string(m_cur_name), m_cur_h_filesize, m_cur_h_ctime, m_cur_h_mtime};
+                        m_listener->fileStart(fileInfo);
                     }
                     //std::cout << "Reading " << m_cur_name << " ..." << std::endl;
                 }
@@ -284,7 +287,8 @@ public:
                 m_cur_remainFileSize -= toRead;
                 readBytes += toRead;
                 if (m_listener != nullptr) {
-                    m_listener->fileProgress(m_cur_name, m_cur_h_filesize, m_cur_h_filesize - m_cur_remainFileSize);
+                    FileInfo fileInfo = {std::string(m_cur_name), m_cur_h_filesize, m_cur_h_ctime, m_cur_h_mtime};
+                    m_listener->fileProgress(fileInfo, m_cur_h_filesize - m_cur_remainFileSize);
                 }
                 if (m_cur_remainFileSize == 0) {
                     m_cur_ofs->close();
@@ -297,7 +301,8 @@ public:
                     m_cur_remainHeaderSize = headerSize;
 
                     if (m_listener != nullptr) {
-                        m_listener->fileEnd(m_cur_name, m_cur_h_filesize);
+                        FileInfo fileInfo = {std::string(m_cur_name), m_cur_h_filesize, m_cur_h_ctime, m_cur_h_mtime};
+                        m_listener->fileEnd(fileInfo);
                     }
                 }
                 if (readBytes == bufferSize) break;

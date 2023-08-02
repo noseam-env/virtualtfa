@@ -7,14 +7,22 @@ struct TfaHeader;
 struct VirtualTfaArchive;
 struct VirtualTfaEntry;
 
+// ctime and mtime and writing context will be 0
+struct FileInfo {
+    std::string name;
+    std::uint64_t size;
+    std::uint64_t ctime;
+    std::uint64_t mtime;
+};
+
 class IProgressListener {
 public:
     virtual ~IProgressListener() = default;
 
     virtual void totalProgress(std::uint64_t currentSize) = 0;
-    virtual void fileStart(char *fileName, std::uint64_t fileSize) = 0;
-    virtual void fileProgress(char *fileName, std::uint64_t fileSize, std::uint64_t currentSize) = 0;
-    virtual void fileEnd(char *fileName, std::uint64_t fileSize) = 0;
+    virtual void fileStart(const FileInfo &fileInfo) = 0;
+    virtual void fileProgress(const FileInfo &fileInfo, std::uint64_t currentSize) = 0;
+    virtual void fileEnd(const FileInfo &fileInfo) = 0;
 };
 
 class VirtualTfaWriter {
