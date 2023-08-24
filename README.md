@@ -4,42 +4,8 @@ This library is an implementation of a virtual write and read in parts archive f
 
 Example:
 
-```c++
-int main(int argc, char *argv[]) {
-    VirtualTfaArchive *archive = virtual_tfa_archive_new();
-    
-    for (int i = 1; i < argc; ++i) {
-        char* argument = argv[i];
-        //
-        // Here you need to create object that
-        // implements VirtualFile class
-        //
-        VirtualTfaEntry *entry = virtual_tfa_entry_new(virtualFile);
-        virtual_tfa_archive_add(archive, entry);
-    }
-    
-    VirtualTfaWriter tfaWriter = *new VirtualTfaWriter(archive, nullptr);
-    std::cout << "Archive size: " << std::to_string(tfaWriter.calcSize()) << std::endl;
-    
-    std::ofstream fileOut("output.tfa", std::ios::binary);
-    if (fileOut.is_open()) {
-        char buffer[8192];
-        
-        std::size_t bytesWritten;
-        do {
-            bytesWritten = tfaWriter.writeTo(buffer, sizeof(buffer));
-            if (bytesWritten > 0) {
-                fileOut.write(buffer, bytesWritten);
-            }
-        } while (bytesWritten > 0);
-
-        fileOut.close();
-
-        std::cout << "Done!" << std::endl;
-    } else {
-        std::cout << "File is closed" << std::endl;
-    }
-}
+```c
+// TODO
 ```
 
 
@@ -47,25 +13,25 @@ int main(int argc, char *argv[]) {
 
 ### Header
 
-Size: `48 bytes`
+Size: `42 bytes`
 
-| Field    | Size | Absolute Pos | Description                                     |
-|----------|------|--------------|-------------------------------------------------|
-| magic    | 4    | 0-3          | magic field, value `tfa\0`                      |
-| version  | 1    | 4            | tfa version, currently `\0`                     |
-| typeflag | 1    | 5            | currently unused                                |
-| unused   | 4    | 6-9          | reserved bytes                                  |
-| mode     | 8    | 10-17        | file permissions in bitset<9>                   |
-| ctime    | 8    | 18-25        | file creation UNIX time (uint64_t)              |
-| mtime    | 8    | 26-33        | file last modification UNIX time (uint64_t)         |
-| namesize | 6    | 34-39        | size of file name in bytes (including last `\0`) |
-| filesize | 8    | 40-47        | total file size (uint64_t)              |
+| Field    | Size | Absolute Pos | Description                                      |
+|----------|------|--------------|--------------------------------------------------|
+| magic    | 4    | 0-3          | magic field, value `tfa\0`                       |
+| version  | 1    | 4            | tfa version, currently `\0`                      |
+| typeflag | 1    | 5            | currently unused                                 |
+| unused   | 4    | 6-9          | reserved bytes                                   |
+| mode     | 4    | 10-13        | file permissions                                 |
+| ctime    | 8    | 14-21        | file creation UNIX time (uint64_t)               |
+| mtime    | 8    | 22-29        | file last modification UNIX time (uint64_t)      |
+| namesize | 4    | 30-33        | size of file name in bytes (including last `\0`) |
+| filesize | 8    | 34-41        | total file size (uint64_t)                       |
 
 ### Structure
 
 | Header   | File Name       | File Data       | Header   | File Name         |     |
 |----------|-----------------|-----------------|----------|-------------------|-----|
-| 48 bytes | header.namesize | header.filesize | 48 bytes | header.namesize | ... |
+| 42 bytes | header.namesize | header.filesize | 42 bytes | header.namesize | ... |
 
 
 ## License

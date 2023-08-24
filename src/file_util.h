@@ -1,5 +1,5 @@
 #pragma once
 
-#include <filesystem>
+#include "virtualtfa.h"
 
-void setFileMetadata(const char *filepath, std::filesystem::perms mode, std::uint64_t ctime, std::uint64_t mtime);
+void virtual_tfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime);

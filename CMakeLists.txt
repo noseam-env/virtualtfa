@@ -2,17 +2,15 @@ cmake_minimum_required(VERSION 3.12)
 
 cmake_policy(SET CMP0077 NEW)
 
-project(virtualtfa)
+project(virtualtfa LANGUAGES C)
 
 option(VIRTUALTFA_BUILD_STATIC "BUILD STATIC LIBRARIES" ON)
 option(VIRTUALTFA_BUILD_SHARED "BUILD SHARED LIBRARIES" ON)
 
-set(CMAKE_CXX_STANDARD 17)
-
 set(VIRTUALTFA_SOURCES
-        src/file_util.cpp
+        src/file_util.c
         src/file_util.h
-        src/virtualtfa.cpp)
+        src/virtualtfa.c)
 
 set(VIRTUALTFA_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
