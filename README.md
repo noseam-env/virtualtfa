@@ -1,4 +1,4 @@
-# libvirtualtfa (VirtualTFA)
+# VirtualTFA
 
 This library is an implementation of a virtual write and read in parts archive format TFA (Transfer File Archive). This technology allows you to comfortably stream archives over the network, as well as read streams of archives without buffering. It is needed to completely eliminate temporary files and accelerate writing and reading. The virtualization essentially reads file data directly from the disk into the final buffer, but in between it includes its headers using pointer logic.
 
@@ -9,23 +9,23 @@ Example:
 ```
 
 
-## Specification
+## TFA Specification
 
 ### Header
 
 Size: `42 bytes`
 
-| Field    | Size | Absolute Pos | Description                                      |
-|----------|------|--------------|--------------------------------------------------|
-| magic    | 4    | 0-3          | magic field, value `tfa\0`                       |
-| version  | 1    | 4            | tfa version, currently `\0`                      |
-| typeflag | 1    | 5            | currently unused                                 |
-| unused   | 4    | 6-9          | reserved bytes                                   |
-| mode     | 4    | 10-13        | file permissions                                 |
-| ctime    | 8    | 14-21        | file creation UNIX time (uint64_t)               |
-| mtime    | 8    | 22-29        | file last modification UNIX time (uint64_t)      |
-| namesize | 4    | 30-33        | size of file name in bytes (including last `\0`) |
-| filesize | 8    | 34-41        | total file size (uint64_t)                       |
+| Field    | Size | Absolute Pos | Description                                                    |
+|----------|------|--------------|----------------------------------------------------------------|
+| magic    | 4    | 0-3          | magic field, value `tfa1`                                      |
+| version  | 1    | 4            | tfa version, currently `\0`                                    |
+| typeflag | 1    | 5            | currently unused                                               |
+| unused   | 4    | 6-9          | reserved bytes                                                 |
+| mode     | 4    | 10-13        | file permissions (LE int64_t)                                  |
+| ctime    | 8    | 14-21        | file creation UNIX time (LE uint64_t)                          |
+| mtime    | 8    | 22-29        | file last modification UNIX time (LE uint64_t)                 |
+| namesize | 4    | 30-33        | size of file name in bytes (including last `\0`) (LE uint32_t) |
+| filesize | 8    | 34-41        | total file size (LE uint64_t)                                  |
 
 ### Structure
 
