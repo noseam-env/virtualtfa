@@ -1,13 +1,15 @@
 # VirtualTFA
 
-This library is an implementation of a virtual write and read in parts archive format TFA (Transfer File Archive). This technology allows you to comfortably stream archives over the network, as well as read streams of archives without buffering. It is needed to completely eliminate temporary files and accelerate writing and reading. The virtualization essentially reads file data directly from the disk into the final buffer, but in between it includes its headers using pointer logic.
+This library is an implementation of a virtual write and read in parts archive format TFA (Transfer File Archive). This
+technology allows you to comfortably stream archives over the network without *temp files*, as well as read streams of archives without
+buffering. It is needed to completely eliminate temporary files and accelerate writing and reading. The virtualization
+essentially reads file data directly from the disk into the final buffer, but in between it includes its headers.
 
-Example:
+Example usage:
 
 ```c
 // TODO
 ```
-
 
 ## TFA Specification
 
@@ -15,24 +17,23 @@ Example:
 
 Size: `42 bytes`
 
-| Field    | Size | Absolute Pos | Description                                                    |
-|----------|------|--------------|----------------------------------------------------------------|
-| magic    | 4    | 0-3          | magic field, value `tfa1`                                      |
-| version  | 1    | 4            | tfa version, currently `\0`                                    |
-| typeflag | 1    | 5            | currently unused                                               |
-| unused   | 4    | 6-9          | reserved bytes                                                 |
-| mode     | 4    | 10-13        | file permissions (LE int64_t)                                  |
-| ctime    | 8    | 14-21        | file creation UNIX time (LE uint64_t)                          |
-| mtime    | 8    | 22-29        | file last modification UNIX time (LE uint64_t)                 |
-| namesize | 4    | 30-33        | size of file name in bytes (including last `\0`) (LE uint32_t) |
-| filesize | 8    | 34-41        | total file size (LE uint64_t)                                  |
+| Field    | Size | Pos   | Description                                                                               |
+|----------|------|-------|-------------------------------------------------------------------------------------------|
+| magic    | 4    | 0-3   | magic field, value `tfa1`                                                                 |
+| version  | 1    | 4     | tfa version, currently `0`                                                                |
+| typeflag | 1    | 5     | currently unused, designed to specify the file type, for example symbolic link            |
+| unused   | 4    | 6-9   | reserved bytes, it will probably be used for hash in the future                           |
+| mode     | 4    | 10-13 | file permissions (Big-endian signed 32-bit integer)                                       |
+| ctime    | 8    | 14-21 | file creation UNIX time (Big-endian unsigned 64-bit integer)                              |
+| mtime    | 8    | 22-29 | file last modification UNIX time (Big-endian unsigned 64-bit integer)                     |
+| namesize | 4    | 30-33 | size of file name in bytes (without null terminator) (Big-endian unsigned 32-bit integer) |
+| filesize | 8    | 34-41 | size of file data (Big-endian unsigned 64-bit integer)                                    |
 
 ### Structure
 
-| Header   | File Name       | File Data       | Header   | File Name         |     |
-|----------|-----------------|-----------------|----------|-------------------|-----|
+| Header   | File Name       | File Data       | Header   | File Name       |     |
+|----------|-----------------|-----------------|----------|-----------------|-----|
 | 42 bytes | header.namesize | header.filesize | 42 bytes | header.namesize | ... |
-
 
 ## License
 

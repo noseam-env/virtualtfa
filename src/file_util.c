@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-FILETIME* virtual_tfa_util_convert_filetime(tfa_utime_t time) {
+FILETIME* virtualtfa_util_convert_filetime(tfa_utime_t time) {
     const tfa_utime_t ticksPerSecond = 10000000ULL;
     tfa_utime_t fileTimeTicks = time * ticksPerSecond;
 
@@ -18,14 +18,14 @@ FILETIME* virtual_tfa_util_convert_filetime(tfa_utime_t time) {
     return fileTime;
 }
 
-void virtual_tfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
+void virtualtfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
     HANDLE fileHandle = CreateFileA(filepath, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "set_file_metadata: error opening file");
         return;
     }
 
-    if (!SetFileTime(fileHandle, virtual_tfa_util_convert_filetime(ctime), NULL, virtual_tfa_util_convert_filetime(mtime))) {
+    if (!SetFileTime(fileHandle, virtualtfa_util_convert_filetime(ctime), NULL, virtualtfa_util_convert_filetime(mtime))) {
         fprintf(stderr, "set_file_metadata: error setting file time");
         CloseHandle(fileHandle);
         return;
@@ -36,13 +36,13 @@ void virtual_tfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, t
 
 #elif defined(__linux__)
 
-void virtual_tfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
+void virtualtfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
     // TODO: implement
 }
 
 #elif defined(__APPLE__)
 
-void virtual_tfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
+void virtualtfa_util_set_file_metadata(const char *filepath, tfa_mode_t mode, tfa_utime_t ctime, tfa_utime_t mtime) {
     // TODO: implement
 }
 

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - .github/workflows/CI.yml
+      - CMakeLists.txt
+      - include/*
+      - src/*
+
+  pull_request:
+    paths:
+      - .github/workflows/CI.yml
+      - CMakeLists.txt
+      - include/*
+      - src/*
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate project files
+        run: cmake -S . -B build
+
+      - name: Build library
+        run: cmake --build build
