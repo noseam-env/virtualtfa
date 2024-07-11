@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if (defined(_WIN32) || defined(_WIN64))
+#include <winsock2.h> // endian swap
+#endif
+
 typedef uint32_t tfa_namesize_t;
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
