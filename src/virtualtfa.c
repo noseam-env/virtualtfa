@@ -6,6 +6,7 @@
 #include <string.h>
 
 #if (defined(_WIN32) || defined(_WIN64))
+#pragma comment(lib, "ws2_32.lib")
 #include <winsock2.h> // endian swap
 #endif
 
