@@ -15,25 +15,25 @@ Example usage:
 
 ### Header
 
-Size: `42 bytes`
+Size: `48 bytes`
 
 | Field    | Size | Pos   | Description                                                                               |
 |----------|------|-------|-------------------------------------------------------------------------------------------|
-| magic    | 4    | 0-3   | magic field, value `tfa1`                                                                 |
-| version  | 1    | 4     | tfa version, currently `0`                                                                |
-| typeflag | 1    | 5     | currently unused, designed to specify the file type, for example symbolic link            |
-| unused   | 4    | 6-9   | reserved bytes, it will probably be used for hash in the future                           |
-| mode     | 4    | 10-13 | file permissions (Big-endian signed 32-bit integer)                                       |
-| ctime    | 8    | 14-21 | file creation UNIX time (Big-endian unsigned 64-bit integer)                              |
-| mtime    | 8    | 22-29 | file last modification UNIX time (Big-endian unsigned 64-bit integer)                     |
-| namesize | 4    | 30-33 | size of file name in bytes (without null terminator) (Big-endian unsigned 32-bit integer) |
-| filesize | 8    | 34-41 | size of file data (Big-endian unsigned 64-bit integer)                                    |
+| magic    | 6    | 0-5   | magic field, value `tfatfa` (0x74 0x66 0x61 0x74 0x66 0x61)                               |
+| version  | 1    | 6     | tfa version, currently `0`                                                                |
+| typeflag | 1    | 7     | currently unused, designed to specify the file type, for example symbolic link            |
+| unused   | 8    | 8-15  | reserved bytes, it will probably be used for hash in the future                           |
+| mode     | 4    | 16-19 | file permissions (Big-endian signed 32-bit integer)                                       |
+| ctime    | 8    | 20-27 | file creation UNIX time (Big-endian unsigned 64-bit integer)                              |
+| mtime    | 8    | 28-35 | file last modification UNIX time (Big-endian unsigned 64-bit integer)                     |
+| namesize | 4    | 36-39 | size of file name in bytes (without null terminator) (Big-endian unsigned 32-bit integer) |
+| filesize | 8    | 40-47 | size of file data (Big-endian unsigned 64-bit integer)                                    |
 
 ### Structure
 
 | Header   | File Name       | File Data       | Header   | File Name       |     |
 |----------|-----------------|-----------------|----------|-----------------|-----|
-| 42 bytes | header.namesize | header.filesize | 42 bytes | header.namesize | ... |
+| 48 bytes | header.namesize | header.filesize | 48 bytes | header.namesize | ... |
 
 ## License
 

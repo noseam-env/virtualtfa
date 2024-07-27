@@ -20,10 +20,10 @@ typedef uint32_t tfa_namesize_t;
 
 // See README.md
 typedef struct _tfa_header {
-    char magic[4];
+    char magic[6];
     char version;
     char typeflag;
-    char reserved[4];
+    char reserved[8];
     char mode[4];
     char ctime[8];
     char mtime[8];
@@ -31,7 +31,7 @@ typedef struct _tfa_header {
     char filesize[8];
 } tfa_header;
 
-static tfa_size_t tfa_header_size = sizeof(tfa_header); // 42
+static tfa_size_t tfa_header_size = sizeof(tfa_header); // 48
 
 /*
  * Utility
@@ -594,7 +594,7 @@ virtualtfa_reader* virtualtfa_reader_new() {
     if (this) {
         this->dest = NULL;
         this->listener = NULL;
-        this->_cur_headerBuf = (char*) malloc(tfa_header_size * sizeof(char));
+        this->_cur_headerBuf = (char*) malloc(tfa_header_size);
         this->_cur_h_mode = 0;
         this->_cur_h_ctime = 0;
         this->_cur_h_mtime = 0;
