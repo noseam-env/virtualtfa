@@ -313,7 +313,7 @@ int virtualtfa_util_calc_part_write(tfa_size_t buffer_size_left,
     return 1;
 }
 
-const char virtualtfa_magic[4] = {'t', 'f', 'a', '1'};
+const char virtualtfa_magic[6] = {'t', 'f', 'a', 't', 'f', 'a'};
 
 void virtualtfa_util_set_magic(tfa_header* header) {
     memcpy(header->magic, virtualtfa_magic, sizeof(virtualtfa_magic));
@@ -575,7 +575,7 @@ struct _virtualtfa_reader {
     const char* dest;
     virtualtfa_listener* listener;
 
-    char* _cur_headerBuf;
+    char* _cur_header_buf;
     tfa_mode_t _cur_h_mode;
     tfa_utime_t _cur_h_ctime;
     tfa_utime_t _cur_h_mtime;
@@ -583,10 +583,10 @@ struct _virtualtfa_reader {
     tfa_size_t _cur_h_filesize;
     char* _cur_name;
     FILE* _cur_ofs;
-    tfa_size_t _cur_remainHeaderSize;
-    tfa_namesize_t _cur_remainNameSize;
-    tfa_size_t _cur_remainFileSize;
-    tfa_size_t _totalRead;
+    tfa_size_t _cur_remain_header_size;
+    tfa_namesize_t _cur_remain_name_size;
+    tfa_size_t _cur_remain_file_size;
+    tfa_size_t _total_read;
 };
 
 virtualtfa_reader* virtualtfa_reader_new() {
@@ -594,7 +594,7 @@ virtualtfa_reader* virtualtfa_reader_new() {
     if (this) {
         this->dest = NULL;
         this->listener = NULL;
-        this->_cur_headerBuf = (char*) malloc(tfa_header_size);
+        this->_cur_header_buf = (char*) malloc(tfa_header_size);
         this->_cur_h_mode = 0;
         this->_cur_h_ctime = 0;
         this->_cur_h_mtime = 0;
@@ -602,11 +602,11 @@ virtualtfa_reader* virtualtfa_reader_new() {
         this->_cur_h_filesize = 0;
         this->_cur_name = NULL;
         this->_cur_ofs = NULL;
-        this->_cur_remainHeaderSize = tfa_header_size;
-        this->_cur_remainNameSize = 0;
-        this->_cur_remainFileSize = 0;
-        this->_cur_remainFileSize = 0;
-        this->_totalRead = 0;
+        this->_cur_remain_header_size = tfa_header_size;
+        this->_cur_remain_name_size = 0;
+        this->_cur_remain_file_size = 0;
+        this->_cur_remain_file_size = 0;
+        this->_total_read = 0;
     }
     return this;
 }
@@ -639,41 +639,43 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
 
     while (buffer_size_left > 0) {
         // Header
-        if (this->_cur_remainHeaderSize > 0) {
-            tfa_size_t buffer_offset = tfa_header_size - this->_cur_remainHeaderSize;
+        if (this->_cur_remain_header_size > 0) {
+            tfa_size_t buffer_offset = tfa_header_size - this->_cur_remain_header_size;
 
-            tfa_size_t to_read = MIN(this->_cur_remainHeaderSize, buffer_size_left);
+            tfa_size_t to_read = MIN(this->_cur_remain_header_size, buffer_size_left);
 
-            memcpy(this->_cur_headerBuf + buffer_offset, buffer + bytes_read, to_read);
+            memcpy(this->_cur_header_buf + buffer_offset, buffer + bytes_read, to_read);
 
-            this->_cur_remainHeaderSize -= to_read;
+            this->_cur_remain_header_size -= to_read;
 
             buffer_size_left -= to_read;
             bytes_read += to_read;
 
-            if (this->_cur_remainHeaderSize == 0) {
+            if (this->_cur_remain_header_size == 0) {
                 //printf("Header buffered, reading ...\n");
 
                 tfa_header header = {0};
-                tfa_size_t deserialize_pointer = 0;
+                tfa_size_t deserialize_cursor = 0;
 
-                memcpy(header.magic, this->_cur_headerBuf + deserialize_pointer, sizeof(header.magic));
-                deserialize_pointer += sizeof(header.magic);
-                header.version = this->_cur_headerBuf[deserialize_pointer];
-                deserialize_pointer++;
-                header.typeflag = this->_cur_headerBuf[deserialize_pointer];
-                deserialize_pointer++;
-                memcpy(header.reserved, this->_cur_headerBuf + deserialize_pointer, sizeof(header.reserved));
-                deserialize_pointer += sizeof(header.reserved);
-                memcpy(header.mode, this->_cur_headerBuf + deserialize_pointer, sizeof(header.mode));
-                deserialize_pointer += sizeof(header.mode);
-                memcpy(header.ctime, this->_cur_headerBuf + deserialize_pointer, sizeof(header.ctime));
-                deserialize_pointer += sizeof(header.ctime);
-                memcpy(header.mtime, this->_cur_headerBuf + deserialize_pointer, sizeof(header.mtime));
-                deserialize_pointer += sizeof(header.mtime);
-                memcpy(header.namesize, this->_cur_headerBuf + deserialize_pointer, sizeof(header.namesize));
-                deserialize_pointer += sizeof(header.namesize);
-                memcpy(header.filesize, this->_cur_headerBuf + deserialize_pointer, sizeof(header.filesize));
+                memcpy(header.magic, this->_cur_header_buf + deserialize_cursor, sizeof(header.magic));
+                deserialize_cursor += sizeof(header.magic);
+                header.version = this->_cur_header_buf[deserialize_cursor];
+                deserialize_cursor++;
+                header.typeflag = this->_cur_header_buf[deserialize_cursor];
+                deserialize_cursor++;
+                memcpy(header.reserved, this->_cur_header_buf + deserialize_cursor, sizeof(header.reserved));
+                deserialize_cursor += sizeof(header.reserved);
+                memcpy(header.mode, this->_cur_header_buf + deserialize_cursor, sizeof(header.mode));
+                deserialize_cursor += sizeof(header.mode);
+                memcpy(header.ctime, this->_cur_header_buf + deserialize_cursor, sizeof(header.ctime));
+                deserialize_cursor += sizeof(header.ctime);
+                memcpy(header.mtime, this->_cur_header_buf + deserialize_cursor, sizeof(header.mtime));
+                deserialize_cursor += sizeof(header.mtime);
+                memcpy(header.namesize, this->_cur_header_buf + deserialize_cursor, sizeof(header.namesize));
+                deserialize_cursor += sizeof(header.namesize);
+                memcpy(header.filesize, this->_cur_header_buf + deserialize_cursor, sizeof(header.filesize));
+
+                // TODO: check magic
 
                 // TODO: rethink about permissions
                 this->_cur_h_mode = (tfa_mode_t) virtualtfa_util_read_i32(header.mode);
@@ -681,8 +683,8 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
                 this->_cur_h_ctime = virtualtfa_util_read_u64(header.ctime);
                 this->_cur_h_mtime = virtualtfa_util_read_u64(header.mtime);
 
-                this->_cur_remainNameSize = this->_cur_h_namesize = virtualtfa_util_read_u32(header.namesize);
-                this->_cur_remainFileSize = this->_cur_h_filesize = virtualtfa_util_read_u32(header.filesize);
+              this->_cur_remain_name_size = this->_cur_h_namesize = virtualtfa_util_read_u32(header.namesize);
+              this->_cur_remain_file_size = this->_cur_h_filesize = virtualtfa_util_read_u32(header.filesize);
 
                 this->_cur_name = (char*) malloc(this->_cur_h_namesize + 1);
                 this->_cur_name[this->_cur_h_namesize] = '\0';
@@ -693,19 +695,19 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
         }
 
         // Name
-        if (this->_cur_remainNameSize > 0) {
-            tfa_size_t buffer_offset = this->_cur_h_namesize - this->_cur_remainNameSize;
+        if (this->_cur_remain_name_size > 0) {
+            tfa_size_t buffer_offset = this->_cur_h_namesize - this->_cur_remain_name_size;
 
-            tfa_size_t to_read = MIN(this->_cur_remainNameSize, buffer_size_left);
+            tfa_size_t to_read = MIN(this->_cur_remain_name_size, buffer_size_left);
 
             memcpy(this->_cur_name + buffer_offset, buffer + bytes_read, to_read);
 
-            this->_cur_remainNameSize -= (tfa_namesize_t) to_read;
+            this->_cur_remain_name_size -= (tfa_namesize_t) to_read;
 
             buffer_size_left -= to_read;
             bytes_read += to_read;
 
-            if (this->_cur_remainNameSize == 0) {
+            if (this->_cur_remain_name_size == 0) {
                 if (!virtualtfa_util_is_path_valid(this->_cur_name)) {
                     fprintf(stderr, "virtualtfa_reader_read: invalid file name\n");
                     break;
@@ -723,7 +725,7 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
         }
 
         // File Data
-        if (this->_cur_remainFileSize > 0) {
+        if (this->_cur_remain_file_size > 0) {
             if (!this->_cur_ofs) {
                 char filepath[1024];
                 snprintf(filepath, sizeof(filepath), "%s/%s", this->dest, this->_cur_name);
@@ -736,12 +738,12 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
 
             //tfa_size_t offset = this->_cur_h_filesize - this->_cur_remainFileSize;
 
-            tfa_size_t to_read = MIN(this->_cur_remainFileSize, buffer_size_left);
+            tfa_size_t to_read = MIN(this->_cur_remain_file_size, buffer_size_left);
 
             //fseek(this->_cur_ofs, offset, SEEK_SET); // causes bugs
             fwrite(buffer + bytes_read, 1, to_read, this->_cur_ofs);
 
-            this->_cur_remainFileSize -= to_read;
+            this->_cur_remain_file_size -= to_read;
 
             buffer_size_left -= to_read;
             bytes_read += to_read;
@@ -752,9 +754,9 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
                                                                                         this->_cur_h_ctime,
                                                                                         this->_cur_h_mtime);
                 this->listener->file_progress(this->listener->file_progress_userdata, &fileinfo,
-                                              this->_cur_h_filesize - this->_cur_remainFileSize);
+                                              this->_cur_h_filesize - this->_cur_remain_file_size);
             }
-            if (this->_cur_remainFileSize == 0) {
+            if (this->_cur_remain_file_size == 0) {
                 fclose(this->_cur_ofs);
                 this->_cur_ofs = NULL;
 
@@ -763,7 +765,7 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
 
                 virtualtfa_util_set_file_metadata(filepath, this->_cur_h_mode, this->_cur_h_ctime, this->_cur_h_mtime);
 
-                this->_cur_remainHeaderSize = tfa_header_size;
+                this->_cur_remain_header_size = tfa_header_size;
 
                 if (this->listener) {
                     virtualtfa_file_info fileinfo = virtualtfa_util_file_info_constructor(this->_cur_name,
@@ -777,9 +779,9 @@ int virtualtfa_reader_read(virtualtfa_reader* this, char* buffer, tfa_size_t buf
         }
     }
 
-    this->_totalRead += bytes_read;
+    this->_total_read += bytes_read;
     if (this->listener) {
-        this->listener->total_progress(this->listener->total_progress_userdata, this->_totalRead);
+        this->listener->total_progress(this->listener->total_progress_userdata, this->_total_read);
     }
 
     if (out_bytes_read) {

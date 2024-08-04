@@ -49,14 +49,14 @@ typedef struct _virtualtfa_reader virtualtfa_reader;
  * Methods
  */
 
-virtualtfa_input_stream* virtualtfa_input_stream_new(void);
+virtualtfa_input_stream*  virtualtfa_input_stream_new(void);
 void                      virtualtfa_input_stream_free(virtualtfa_input_stream*);
 
-virtualtfa_read_function  virtualtfa_input_stream_get_read_function(virtualtfa_input_stream*);
+virtualtfa_read_function   virtualtfa_input_stream_get_read_function(virtualtfa_input_stream*);
 void                       virtualtfa_input_stream_set_read_function(virtualtfa_input_stream*, virtualtfa_read_function);
 void*                      virtualtfa_input_stream_get_read_userdata(virtualtfa_input_stream*);
 void                       virtualtfa_input_stream_set_read_userdata(virtualtfa_input_stream*, void*);
-virtualtfa_close_function virtualtfa_input_stream_get_close_function(virtualtfa_input_stream*);
+virtualtfa_close_function  virtualtfa_input_stream_get_close_function(virtualtfa_input_stream*);
 void                       virtualtfa_input_stream_set_close_function(virtualtfa_input_stream*, virtualtfa_close_function);
 void*                      virtualtfa_input_stream_get_close_userdata(virtualtfa_input_stream*);
 void                       virtualtfa_input_stream_set_close_userdata(virtualtfa_input_stream*, void*);
@@ -66,42 +66,42 @@ void                       virtualtfa_input_stream_close(virtualtfa_input_stream
 virtualtfa_entry* virtualtfa_entry_new(void);
 void			   virtualtfa_entry_free(virtualtfa_entry*);
 
-const char*                        virtualtfa_entry_get_name(virtualtfa_entry*);
-void                               virtualtfa_entry_set_name(virtualtfa_entry*, const char*);
-tfa_size_t                         virtualtfa_entry_get_size(virtualtfa_entry*);
-void                               virtualtfa_entry_set_size(virtualtfa_entry*, tfa_size_t);
+const char*                       virtualtfa_entry_get_name(virtualtfa_entry*);
+void                              virtualtfa_entry_set_name(virtualtfa_entry*, const char*);
+tfa_size_t                        virtualtfa_entry_get_size(virtualtfa_entry*);
+void                              virtualtfa_entry_set_size(virtualtfa_entry*, tfa_size_t);
 virtualtfa_input_stream_supplier  virtualtfa_entry_get_input_stream_supplier(virtualtfa_entry*);
-void                               virtualtfa_entry_set_input_stream_supplier(virtualtfa_entry*, virtualtfa_input_stream_supplier);
-void*                              virtualtfa_entry_get_input_stream_supplier_userdata(virtualtfa_entry*);
-void                               virtualtfa_entry_set_input_stream_supplier_userdata(virtualtfa_entry*, void*);
-tfa_utime_t                        virtualtfa_entry_get_ctime(virtualtfa_entry*);
-void                               virtualtfa_entry_set_ctime(virtualtfa_entry*, tfa_utime_t);
-tfa_utime_t                        virtualtfa_entry_get_mtime(virtualtfa_entry*);
-void                               virtualtfa_entry_set_mtime(virtualtfa_entry*, tfa_utime_t);
-tfa_mode_t                         virtualtfa_entry_get_mode(virtualtfa_entry*);
-void                               virtualtfa_entry_set_mode(virtualtfa_entry*, tfa_mode_t);
+void                              virtualtfa_entry_set_input_stream_supplier(virtualtfa_entry*, virtualtfa_input_stream_supplier);
+void*                             virtualtfa_entry_get_input_stream_supplier_userdata(virtualtfa_entry*);
+void                              virtualtfa_entry_set_input_stream_supplier_userdata(virtualtfa_entry*, void*);
+tfa_utime_t                       virtualtfa_entry_get_ctime(virtualtfa_entry*);
+void                              virtualtfa_entry_set_ctime(virtualtfa_entry*, tfa_utime_t);
+tfa_utime_t                       virtualtfa_entry_get_mtime(virtualtfa_entry*);
+void                              virtualtfa_entry_set_mtime(virtualtfa_entry*, tfa_utime_t);
+tfa_mode_t                        virtualtfa_entry_get_mode(virtualtfa_entry*);
+void                              virtualtfa_entry_set_mode(virtualtfa_entry*, tfa_mode_t);
 
-virtualtfa_archive* virtualtfa_archive_new(void);
+virtualtfa_archive*  virtualtfa_archive_new(void);
 void			           virtualtfa_archive_free(virtualtfa_archive*);
 
 void virtualtfa_archive_add(virtualtfa_archive*, virtualtfa_entry*);
 
-virtualtfa_writer* virtualtfa_writer_new(void);
+virtualtfa_writer*  virtualtfa_writer_new(void);
 void                virtualtfa_writer_free(virtualtfa_writer*);
 
-virtualtfa_archive*  virtualtfa_writer_get_archive(virtualtfa_writer*);
+virtualtfa_archive*   virtualtfa_writer_get_archive(virtualtfa_writer*);
 void                  virtualtfa_writer_set_archive(virtualtfa_writer*, virtualtfa_archive*);
-virtualtfa_listener* virtualtfa_writer_get_listener(virtualtfa_writer*);
+virtualtfa_listener*  virtualtfa_writer_get_listener(virtualtfa_writer*);
 void                  virtualtfa_writer_set_listener(virtualtfa_writer*, virtualtfa_listener*);
 tfa_size_t            virtualtfa_writer_calc_size(virtualtfa_writer*);
 int                   virtualtfa_writer_write(virtualtfa_writer*, char* buffer, tfa_size_t buffer_size, tfa_size_t* out_bytes_written);
 
-virtualtfa_reader* virtualtfa_reader_new(void);
+virtualtfa_reader*  virtualtfa_reader_new(void);
 void                virtualtfa_reader_free(virtualtfa_reader*);
 
 const char*           virtualtfa_reader_get_dest(virtualtfa_reader*);
 void                  virtualtfa_reader_set_dest(virtualtfa_reader*, const char* dest);
-virtualtfa_listener* virtualtfa_reader_get_listener(virtualtfa_reader*);
+virtualtfa_listener*  virtualtfa_reader_get_listener(virtualtfa_reader*);
 void                  virtualtfa_reader_set_listener(virtualtfa_reader*, virtualtfa_listener*);
 int                   virtualtfa_reader_read(virtualtfa_reader *, char* buffer, tfa_size_t buffer_size, tfa_size_t* out_bytes_read);
 
